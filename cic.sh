@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /export/witham3/etools
+cd /export/witham3/cic
 export PATH=~/anaconda2/bin:$PATH
 . ~/.bashrc
 conda activate cic
