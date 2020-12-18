@@ -31,7 +31,8 @@ duplicates = []
 INDEX_NODE = "esgf-node.llnl.gov"
 CERT = "/p/user_pub/publish-queue/certs/certificate-file"
 CMOR_PATH = sys.argv[2]
-instance_file = open(directory + "need_replicas.txt", "w")
+DIRECTORY = sys.argv[1]
+instance_file = open(DIRECTORY + "need_replicas.txt", "w")
 
 def save_to_list(instance):
     instance_file.write(instance + "\n")
@@ -506,7 +507,6 @@ if __name__ == '__main__':
     counts = [0, 0, 0, 0]
     skips = []
 
-    directory = sys.argv[1]
     # retracted=false
     # look at IPSL for latest false originals
     search_url = "http://esgf-node.llnl.gov/esg-search/search?project=CMIP6&latest=true&retracted=false&limit={}&offset={}&format=application%2fsolr%2bjson&replica=true&institution_id={}&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,retracted,id,activity_drs,activity_id,source_id,experiment_id"
@@ -580,7 +580,7 @@ if __name__ == '__main__':
             warnings.append("Error fetching inconsistencies for " + institution + ": " + str(ex))
             continue
 
-    myfile = open(directory + 'inconsistencies.json', 'w+')
+    myfile = open(DIRECTORY + 'inconsistencies.json', 'w+')
     lst = []
     ceda = []
     dkrz = []
@@ -592,7 +592,7 @@ if __name__ == '__main__':
             continue
         else:
             for node in inconsistencies[err].keys():
-                fn = directory + node + "-" + err + ".json"
+                fn = DIRECTORY + node + "-" + err + ".json"
                 with open(fn, 'w+') as fp:
                     try:
                         fp.write(fn)
@@ -613,12 +613,12 @@ if __name__ == '__main__':
         print(warnings)
         exit(1)
     json.dump(inconsistencies, myfile, indent=4)  # saves data as json file
-    zipfile = gzip.open(directory + "inconsistencies.json.gz", 'w+')
+    zipfile = gzip.open(DIRECTORY + "inconsistencies.json.gz", 'w+')
     shutil.copyfileobj(myfile, zipfile)
     myfile.close()
     zipfile.close()
     instance_file.close()
-    with open(directory + 'E3SM.json', 'w+') as d:
+    with open(DIRECTORY + 'E3SM.json', 'w+') as d:
         json.dump(E3SM_f, d, indent=4)
 
     summ = summary()
