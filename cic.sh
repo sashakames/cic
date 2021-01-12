@@ -1,13 +1,15 @@
 #!/bin/bash
 
-cd /export/witham3/cic
-export PATH=~/anaconda2/bin:$PATH
-. ~/.bashrc
-conda activate cic
+cd /export/ames4/git/cic
+
+source ~/conda/etc/profile.d/conda.sh
+conda activate fresh2
 
 thedate=`date +%y%m%d_%H%M`
-destpath=/p/user_pub/publish-queue/inconsistencies/$thedate
-
+destpath=/p/user_pub/publish-queue/inconsistencies/$thedate/
+cmorpath=/usr/local/cmip6-cmor-tables/Tables/
 mkdir -p $destpath
 
-python3 cic.py $destpath/ /export/witham3/cmor/
+
+
+python cic.py $destpath $cmorpath
