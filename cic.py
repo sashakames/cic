@@ -9,14 +9,18 @@ from email.mime.base import MIMEBase
 from email import encoders
 import gzip
 import shutil
+import urllib3
 
 
 if len(sys.argv) < 3:
     print("Missing args! \nusage: python3 cic.py </write/directory/> </path/to/cmor/tables/> \nNOTE: use absolute paths and be sure to include the ending '/'.")
     exit(1)
 
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 TEST = False
 EMAIL = False
+FIX_ERRS = False
 NUM_RETR = 10000
 ORIGINAL_ERR = "No original record:"
 NOF_ERR = "Inconsistent number of files (esgf replica issue):"
@@ -27,20 +31,21 @@ DUP_ERR = "Duplicate records:"
 RR_ERR = "Replica retracted, original not retracted:"
 AC_ERR = "Failed activity check:"
 EC_ERR = "Failed experiment_id check:"
+ERRATA = "Errata found:"
 duplicates = []
 INDEX_NODE = "esgf-node.llnl.gov"
 CERT = "/p/user_pub/publish-queue/certs/certificate-file"
 CMOR_PATH = sys.argv[2]
 DIRECTORY = sys.argv[1]
 instance_file = open(DIRECTORY + "need_replicas.txt", "w")
+CMOR_JSON = json.load(open("{}CMIP6_CV.json".format(CMOR_PATH)))["CV"]
 
 def save_to_list(instance):
     instance_file.write(instance + "\n")
 
 
 def run_ac(input_rec):
-    cv_path = "{}CMIP6_CV.json".format(CMOR_PATH)
-    jobj = json.load(open(cv_path))["CV"]
+    jobj = CMOR_JSON
     sid_dict = jobj["source_id"]
 
     src_id = input_rec['source_id'][0]
@@ -54,12 +59,11 @@ def run_ac(input_rec):
 
 
 def run_ec(rec):
-    cv_path = "{}CMIP6_CV.json".format(CMOR_PATH)
+    cv_table = CMOR_JSON
 
     act_id = rec['activity_drs'][0]
     exp_id = rec['experiment_id'][0]
 
-    cv_table = json.load(open(cv_path, 'r'))["CV"]
     if exp_id not in cv_table['experiment_id']:
         return False
     elif act_id not in cv_table['experiment_id'][exp_id]['activity_id'][0]:
@@ -221,10 +225,10 @@ def get_batch(search_url, institution):
                     batch[n["instance_id"]].append(n)
             seen += 1
         count += 1
-        """if count >= 1:  # use to decide how many records to retrieve (testing tool)
+        if count >= 1:  # use to decide how many records to retrieve (testing tool)
             if going:
                 going = False
-                print("Loaded 10k (temp max) results from " + institution)"""
+                print("Loaded 10k (temp max) results from " + institution)
     print("Done.")
     if found == 0:
         print("Error with load, " + str(found) + " found.")
@@ -232,7 +236,7 @@ def get_batch(search_url, institution):
         print("Error. Only " + str(seen) + " results loaded out of " + str(found) + ".")
         warning = "ERROR collecting results from " + institution + ": Only " + str(
             seen) + " results loaded out of " + str(found) + "."
-        warnings.append(warning)
+        # warnings.append(warning)
     return batch, found
 
 
@@ -246,6 +250,24 @@ def count_error(err, field):
     if field not in error_counts[err].keys():
         error_counts[err][field] = 0
     error_counts[err][field] += 1
+
+
+def check_errata(pid):
+    get_error = "http://errata.es-doc.org/1/resolve/simple-pid?datasets={}".format(pid)
+    try:
+        resp = json.loads(requests.get(get_error, timeout=30, verify=False).text)
+    except:
+        print("Could not reach errata site.", file=sys.stderr)
+        return False
+    try:
+        errata = resp[next(iter(resp))]["hasErrata"]
+    except:
+        print("Errata site threw error.", file=sys.stderr)
+        return False
+    if errata:
+        return True
+    else:
+        return False
 
 
 def find_inconsistencies(batch, institution):
@@ -305,6 +327,11 @@ def find_inconsistencies(batch, institution):
                 nof_rec = member
                 nof_err = True
             prev = member
+        errata = check_errata(instance)
+        if errata:
+            print("Errata found with this dataset, retracting.")
+            flag(prev["data_node"], ERRATA, group)
+            count_error(ERRATA, institution)
         if original is None:  # if no original record, return as an inconsistency sorted by data node
             flag(prev["data_node"], ORIGINAL_ERR, group)
             count_error(ORIGINAL_ERR, institution)
@@ -402,6 +429,11 @@ def summary():
     lines.append(str(len(error_counts["Multiple originals"].keys())) + " institutions affected.")
     lines = summarize_alt("Multiple originals", " errors where multiple originals were found.", lines)
     lines = summarize("Multiple originals", " errors where multiple originals were found.", lines, True)
+    
+    lines.append("Records with existing errata:")
+    lines.append(str(len(error_counts[ERRATA].keys())) + " institutions affected.")
+    lines = summarize_alt(ERRATA, " errors where an existing errata was found.", lines)
+    lines = summarize(ERRATA, " errors where an existing errata was found.", lines, True)
 
     msg = "Today's inconsistency check results:"
     for line in lines:
@@ -484,6 +516,7 @@ if __name__ == '__main__':
     inconsistencies = {}
     inconsistencies[ORIGINAL_ERR] = {}
     inconsistencies[NOF_ERR] = {}
+    inconsistencies[NOF_ERR2] = {}
     inconsistencies[LATEST_ERR] = {}
     inconsistencies[RETRACT_ERR] = {}
     inconsistencies["Multiple originals"] = {}
@@ -491,6 +524,7 @@ if __name__ == '__main__':
     inconsistencies[RR_ERR] = {}
     inconsistencies[AC_ERR] = {}
     inconsistencies[EC_ERR] = {}
+    inconsistencies[ERRATA] = {}
     count = 0
     ntotal = 0
 
@@ -501,6 +535,7 @@ if __name__ == '__main__':
     error_counts[LATEST_ERR] = {}
     error_counts[DUP_ERR] = {}
     error_counts[RR_ERR] = {}
+    error_counts[ERRATA] = {}
     error_counts['Multiple originals'] = {}
     warnings = []
     E3SM_f = []
@@ -592,11 +627,11 @@ if __name__ == '__main__':
             continue
         else:
             for node in inconsistencies[err].keys():
-                fn = DIRECTORY + node + "-" + err + ".json"
+                fn_err = err
+                fn_err2 = "_".join(fn_err.split(" "))
+                fn = DIRECTORY + node + "_" + fn_err2[:-1] + ".json"
                 with open(fn, 'w+') as fp:
                     try:
-                        fp.write(fn)
-                        fp.write(err)
                         json.dump(inconsistencies[err][node], fp, indent=4)
                         if 'ceda' in fn:
                             ceda.append(fn)
@@ -624,10 +659,10 @@ if __name__ == '__main__':
     summ = summary()
     try:
         send_data(summ, 'e.witham@columbia.edu', 'gmail', llnl)
-        send_data(summ, 'amysash2006@gmail.com', 'gmail')
+        # send_data(summ, 'amysash2006@gmail.com', 'gmail')
     except Exception as ex:
         send_data(summ, 'e.witham@columbia.edu', 'gmail')
-        send_data(summ, 'amysash2006@gmail.com', 'gmail')
+        # send_data(summ, 'amysash2006@gmail.com', 'gmail')
 
 
     if len(warnings) > 2:
@@ -638,7 +673,8 @@ if __name__ == '__main__':
         send_data(summ, 'kelsey.druken@anu.edu.au', 'gmail')
 
     rm, lf = gen_ids(inconsistencies)
-    fix_latest_false(lf)
-    fix_retracted_missing(rm)
-    print("Latest errors and Retracted & Missing errors fixed.")
+    if FIX_ERRS:
+        fix_latest_false(lf)
+        fix_retracted_missing(rm)
+        print("Latest errors and Retracted & Missing errors fixed.")
     print("TOTAL: " + str(ntotal))
