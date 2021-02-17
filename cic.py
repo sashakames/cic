@@ -1,5 +1,5 @@
 import requests, json, sys
-from esgcet.pub_client import publisherClient
+from pub_client import publisherClient
 import esgcet.update as up
 import esgcet.activity_check as ac
 import smtplib
@@ -20,7 +20,9 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 TEST = False
 EMAIL = False
-FIX_ERRS = False
+FIX_ERRS = True
+DO_AC = False
+ERRATA_CHECK = False
 NUM_RETR = 10000
 ORIGINAL_ERR = "No original record:"
 NOF_ERR = "Inconsistent number of files (esgf replica issue):"
@@ -37,7 +39,7 @@ INDEX_NODE = "esgf-node.llnl.gov"
 CERT = "/p/user_pub/publish-queue/certs/certificate-file"
 CMOR_PATH = sys.argv[2]
 DIRECTORY = sys.argv[1]
-instance_file = open(DIRECTORY + "need_replicas.txt", "w")
+instance_file = open(DIRECTORY + "have_replicas.txt", "w")
 CMOR_JSON = json.load(open("{}CMIP6_CV.json".format(CMOR_PATH)))["CV"]
 
 def save_to_list(instance):
@@ -225,10 +227,10 @@ def get_batch(search_url, institution):
                     batch[n["instance_id"]].append(n)
             seen += 1
         count += 1
-        if count >= 1:  # use to decide how many records to retrieve (testing tool)
+        """if count >= 1:  # use to decide how many records to retrieve (testing tool)
             if going:
                 going = False
-                print("Loaded 10k (temp max) results from " + institution)
+                print("Loaded 10k (temp max) results from " + institution)"""
     print("Done.")
     if found == 0:
         print("Error with load, " + str(found) + " found.")
@@ -236,7 +238,7 @@ def get_batch(search_url, institution):
         print("Error. Only " + str(seen) + " results loaded out of " + str(found) + ".")
         warning = "ERROR collecting results from " + institution + ": Only " + str(
             seen) + " results loaded out of " + str(found) + "."
-        # warnings.append(warning)
+        warnings.append(warning)
     return batch, found
 
 
@@ -287,8 +289,11 @@ def find_inconsistencies(batch, institution):
         replica_retracted = False
         failed_ac = False
         failed_ec = False
-        replica_needed = True
+        have_replica = False
+        all_rt = True
         for member in group:
+            if not member["retracted"]:
+                all_rt = False
             if not member["replica"]:  # check if member is original record
                 if original is None:
                     original = member
@@ -318,20 +323,24 @@ def find_inconsistencies(batch, institution):
             else:
                 if member['retracted']:
                     replica_retracted = True
-                replica_needed = False
-            if not run_ac(member):
-                failed_ac = True
-            elif not run_ec(member):
-                failed_ec = True
+                if 'llnl' in member['data_node']:
+                    have_replica = True
+            if DO_AC:
+                if not run_ac(member):
+                    failed_ac = True
+                elif not run_ec(member):
+                    failed_ec = True
             if not compare(member, prev, "number_of_files"):  # consistency check for number of files field
                 nof_rec = member
                 nof_err = True
             prev = member
-        errata = check_errata(instance)
-        if errata:
-            print("Errata found with this dataset, retracting.")
-            flag(prev["data_node"], ERRATA, group)
-            count_error(ERRATA, institution)
+        if ERRATA_CHECK:
+            if not all_rt:
+                errata = check_errata(instance)
+                if errata:
+                    print("Errata found with this dataset, retracting.")
+                    flag(prev["data_node"], ERRATA, group)
+                    count_error(ERRATA, institution)
         if original is None:  # if no original record, return as an inconsistency sorted by data node
             flag(prev["data_node"], ORIGINAL_ERR, group)
             count_error(ORIGINAL_ERR, institution)
@@ -359,7 +368,7 @@ def find_inconsistencies(batch, institution):
             flag(institution, AC_ERR, group)
         elif failed_ec:
             flag(institution, EC_ERR, group)
-        if replica_needed:
+        if have_replica:
             save_to_list(instance)
 
     print("Done.")
@@ -399,11 +408,12 @@ def summary():
                       False)
     lines = summarize(NOF_ERR2, " errors corresponding to an inconsistent number of files. (client issue)", lines,
                       False)
-    lines.append("Records which failed activity check:")
-    lines = summarize(AC_ERR, " errors where the record failed the activity check.", lines, False)
+    if DO_AC:
+        lines.append("Records which failed activity check:")
+        lines = summarize(AC_ERR, " errors where the record failed the activity check.", lines, False)
 
-    lines.append("Records which failed the experiment_id check:")
-    lines = summarize(EC_ERR, " errors where the experiment_id did not agree with the activity_id.", lines, False)
+        lines.append("Records which failed the experiment_id check:")
+        lines = summarize(EC_ERR, " errors where the experiment_id did not agree with the activity_id.", lines, False)
 
     lines.append("Records with no original record:")
     lines.append(str(len(error_counts[ORIGINAL_ERR].keys())) + " institutions affected.")
@@ -430,10 +440,11 @@ def summary():
     lines = summarize_alt("Multiple originals", " errors where multiple originals were found.", lines)
     lines = summarize("Multiple originals", " errors where multiple originals were found.", lines, True)
     
-    lines.append("Records with existing errata:")
-    lines.append(str(len(error_counts[ERRATA].keys())) + " institutions affected.")
-    lines = summarize_alt(ERRATA, " errors where an existing errata was found.", lines)
-    lines = summarize(ERRATA, " errors where an existing errata was found.", lines, True)
+    if ERRATA_CHECK:
+        lines.append("Records with existing errata:")
+        lines.append(str(len(error_counts[ERRATA].keys())) + " institutions affected.")
+        lines = summarize_alt(ERRATA, " errors where an existing errata was found.", lines)
+        lines = summarize(ERRATA, " errors where an existing errata was found.", lines, True)
 
     msg = "Today's inconsistency check results:"
     for line in lines:
@@ -443,7 +454,7 @@ def summary():
     return msg
 
 
-def send_data(message, to_email, server, attachments=None):
+def send_data(message, to_email, attachments=None):
     print("Sending email...")
 
     msg = MIMEMultipart()
@@ -451,28 +462,25 @@ def send_data(message, to_email, server, attachments=None):
     from_email = "witham3@llnl.gov" #ames4@llnl.gov
     msg['From'] = from_email
     msg['To'] = to_email
-    if server != 'gmail':
-        print("Server not implemented, email failed.")
-    else:
-        msg['Subject'] = "Data Inconsistency Results -- ESGF"
-        body = message
-        msg.attach(MIMEText(body, 'plain'))
-        if attachments is not None:
-            for attachment in attachments:
-                attach_file = open(attachment, 'r+')
-                payload = MIMEBase('application', 'octate-stream')
-                payload.set_payload((attach_file).read())
-                encoders.encode_base64(payload)
-                payload.add_header('Content-Decomposition', 'attachment', filname=attachment)
-                msg.attach(payload)
-        # s = smtplib.SMTP('smtp.gmail.com', 587)  # llnl smtp: nospam.llnl.gov
-        s = smtplib.SMTP('nospam.llnl.gov')
-        s.ehlo()
-        s.starttls()
-        # s.login(from_email, "")  # fill in passwd before running
-        text = msg.as_string()
-        s.sendmail(from_email, to_email, text)
-        s.quit()
+    msg['Subject'] = "Data Inconsistency Results -- ESGF"
+    body = message
+    msg.attach(MIMEText(body, 'plain'))
+    if attachments is not None:
+        for attachment in attachments:
+            attach_file = open(attachment, 'r+')
+            payload = MIMEBase('application', 'octate-stream')
+            payload.set_payload((attach_file).read())
+            encoders.encode_base64(payload)
+            payload.add_header('Content-Decomposition', 'attachment', filname=attachment)
+            msg.attach(payload)
+    # s = smtplib.SMTP('smtp.gmail.com', 587)  # llnl smtp: nospam.llnl.gov
+    s = smtplib.SMTP('nospam.llnl.gov')
+    s.ehlo()
+    s.starttls()
+    # s.login(from_email, "")  # fill in passwd before running
+    text = msg.as_string()
+    s.sendmail(from_email, to_email, text)
+    s.quit()
 
     print("Done.")
 
@@ -481,17 +489,18 @@ def gen_ids(d):
     rm = []
     lf = []
     nodes = ["aims3.llnl.gov", "esgf-data1.llnl.gov"]
-    for error in d.keys():
-        if error == ORIGINAL_ERR or error == RETRACT_ERR:
+    print(d.keys())
+    for err in d.keys():
+        if err == ORIGINAL_ERR or err == RETRACT_ERR:
             l = rm
-        elif error == LATEST_ERR:
+        elif err == LATEST_ERR:
             l = lf
         else:
             continue
-        for node in inconsistencies[err].keys():
+        for node in d[err].keys():
             if node not in nodes:
                 continue
-            for recs in inconsistencies[err][node]:
+            for recs in d[err][node]:
                 rec = recs[0]
                 instance = rec["instance_id"]
                 id = instance + "|" + node
@@ -509,6 +518,7 @@ def fix_latest_false(ids):
     pc = publisherClient(CERT, INDEX_NODE)
     for i in ids:
         xml = up.gen_hide_xml(i)
+        print(xml)
         pc.update(xml)
 
 
@@ -563,8 +573,6 @@ if __name__ == '__main__':
                 base = "http://{}/esg-search/search?".format(node)
                 args = "project=CMIP6&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
                 url = base + args
-                if "ceda" in node:
-                    url = uk_url
             print("Fetching originals...")
             originals, tally = get_batch(url, institution)
             if tally == 0:
@@ -657,22 +665,20 @@ if __name__ == '__main__':
         json.dump(E3SM_f, d, indent=4)
 
     summ = summary()
-    try:
-        send_data(summ, 'e.witham@columbia.edu', 'gmail', llnl)
-        # send_data(summ, 'amysash2006@gmail.com', 'gmail')
-    except Exception as ex:
-        send_data(summ, 'e.witham@columbia.edu', 'gmail')
-        # send_data(summ, 'amysash2006@gmail.com', 'gmail')
+    send_data(summ, 'e.witham@columbia.edu')
+    send_data(summ, 'ames4@llnl.gov')
 
 
     if len(warnings) > 2:
         pass
     elif EMAIL:
-        send_data(summ, 'ruth.petrie@stfc.ac.uk', 'gmail')
-        send_data(summ, 'esgf@dkrz.de', 'gmail')
-        send_data(summ, 'kelsey.druken@anu.edu.au', 'gmail')
+        send_data(summ, 'ruth.petrie@stfc.ac.uk')
+        send_data(summ, 'esgf@dkrz.de')
+        send_data(summ, 'kelsey.druken@anu.edu.au')
 
     rm, lf = gen_ids(inconsistencies)
+    print("retracted/missing: " + str(rm))
+    print("latest false: " + str(lf))
     if FIX_ERRS:
         fix_latest_false(lf)
         fix_retracted_missing(rm)
