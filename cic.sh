@@ -1,9 +1,11 @@
 #!/bin/bash
 
-cd /export/ames4/git/cic
+cd /export/witham3/cic
 
-source ~/conda/etc/profile.d/conda.sh
-conda activate fresh2
+bash /export/witham3/esgf/conda.sh
+. ~/.bashrc
+
+conda activate cic
 
 thedate=`date +%y%m%d_%H%M`
 destpath=/p/user_pub/publish-queue/inconsistencies/$thedate/
@@ -12,4 +14,4 @@ mkdir -p $destpath
 
 
 
-python cic.py $destpath $cmorpath
+python3 cic.py $destpath $cmorpath
