@@ -179,6 +179,8 @@ def get_nodes():
 
 
 def get_batch(search_url, institution):
+    if TEST:
+        return {}, 0
     going = True
     seen = 0
     offset = 0
@@ -299,6 +301,8 @@ def check_errata(pid):
 
 
 def find_inconsistencies(batch, institution):
+    if TEST:
+        return None
     print("Finding inconsistencies for " + institution + "...")
 
     for instance in (batch.keys()):
@@ -425,6 +429,20 @@ def summary():
     for w in warnings:
         lines.append(w)
 
+    if TEST:
+        lines.append("Dry run enabled, no data fetched or processed. No output (0 errors) expected.")
+    if DO_AC:
+        lines.append("Activity check error logging enabled.")
+    else:
+        lines.append("Activity check error logging disabled.")
+    if ERRATA_CHECK:
+        lines.append("Errata database comparison logging enabled.")
+    else:
+        lines.append("Errata database comparison logging disabled.")
+    if FIX_ERRS:
+        lines.append("Auto retraction/updating on LLNL ESGF node for errors where no original record was found, "
+                     "original records were retracted, or original record was not latest version enabled.")
+
     lines.append("Duplicate records: ")
     lines = summarize(DUP_ERR, " errors where duplicate records were found.", lines, True)
     lines = summarize_alt(DUP_ERR, " errors where duplicate records were found.", lines)
@@ -549,6 +567,8 @@ def fix_latest_false(ids):
 
 
 if __name__ == '__main__':
+    if TEST:
+        print("Dry run enabled. No data will be fetched or processed, no output will be given.")
     inconsistencies = {}
     inconsistencies[ORIGINAL_ERR] = {}
     inconsistencies[NOF_ERR] = {}
@@ -688,8 +708,8 @@ if __name__ == '__main__':
     zipfile.close()
     if SAVE_REPLICA_HOLDINGS:
         instance_file.close()
-    with open(DIRECTORY + 'E3SM.json', 'w+') as d:
-        json.dump(E3SM_f, d, indent=4)
+    # with open(DIRECTORY + 'E3SM.json', 'w+') as d:
+    #    json.dump(E3SM_f, d, indent=4)
 
     summ = summary()
     if PRIMARY_EMAIL is not None:
