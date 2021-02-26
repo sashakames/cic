@@ -10,19 +10,43 @@ from email import encoders
 import gzip
 import shutil
 import urllib3
+import argparse
 
 
-if len(sys.argv) < 3:
-    print("Missing args! \nusage: python3 cic.py </write/directory/> </path/to/cmor/tables/> \nNOTE: use absolute paths and be sure to include the ending '/'.")
-    exit(1)
+def get_args():
+    parser = argparse.ArgumentParser(description="CMIP6 Inconsistency Checker: Check for metadata errors and inconsistencies in the ESGF database.")
+
+    parser.add_argument("--output-dir", dest="output_directory", required=True,
+                        help="Full path to destination directory for json output files. Please use ending '/'.")
+    parser.add_argument("--cmor-tables", dest="cmor_tables", required=True,
+                        help="Full path to CMOR tables directory. Please use ending '/'.")
+    parser.add_argument("--test", dest="test", default=False, action="store_true", help="Enable for a test run or dry run.")
+    parser.add_argument("--email", dest="email", default=None, nargs="+",
+                        help="Primary email(s) to send summary of data to. Default is to not sent an email summary.")
+    parser.add_argument("--enable-email", dest="enable_email", default=False, action="store_true",
+                        help="Enable emailing of summary of results to complete ESGF affiliate email list.")
+    parser.add_argument("--enable-ac", dest="ac", default=False, action="store_true",
+                        help="Enable activity check, expect longer time for output processing.")
+    parser.add_argument("--fix-errors", dest="fix_errs", default=False, action="store_true",
+                        help="Retract and update metadata records on the LLNL ESGF node to fix errors detected by CIC.")
+    parser.add_argument("--enable-errata", dest="errata", default=False, action="store_true",
+                        help="Enable checking of the Errata database, expect longer time for output processing.")
+    parser.add_argument("--get-replica-holdings", dest="get_holdings", default=False, action="store_true",
+                        help="Enable output of replica holdings for comparison with SQLite database paths.")
+
+    return parser.parse_args()
+
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-TEST = False
-EMAIL = False
-FIX_ERRS = True
-DO_AC = False
-ERRATA_CHECK = False
+args = get_args()
+TEST = args.test
+EMAIL_LIST = args.enable_email
+FIX_ERRS = args.fix_errs
+DO_AC = args.ac
+ERRATA_CHECK = args.errata
+PRIMARY_EMAIL = args.email
+SAVE_REPLICA_HOLDINGS = args.get_holdings
 NUM_RETR = 10000
 ORIGINAL_ERR = "No original record:"
 NOF_ERR = "Inconsistent number of files (esgf replica issue):"
@@ -37,10 +61,12 @@ ERRATA = "Errata found:"
 duplicates = []
 INDEX_NODE = "esgf-node.llnl.gov"
 CERT = "/p/user_pub/publish-queue/certs/certificate-file"
-CMOR_PATH = sys.argv[2]
-DIRECTORY = sys.argv[1]
-instance_file = open(DIRECTORY + "have_replicas.txt", "w")
+CMOR_PATH = args.cmor_tables
+DIRECTORY = args.output_directory
+if SAVE_REPLICA_HOLDINGS:
+    instance_file = open(DIRECTORY + "have_replicas.txt", "w")
 CMOR_JSON = json.load(open("{}CMIP6_CV.json".format(CMOR_PATH)))["CV"]
+
 
 def save_to_list(instance):
     instance_file.write(instance + "\n")
@@ -368,7 +394,7 @@ def find_inconsistencies(batch, institution):
             flag(institution, AC_ERR, group)
         elif failed_ec:
             flag(institution, EC_ERR, group)
-        if have_replica:
+        if have_replica and SAVE_REPLICA_HOLDINGS:
             save_to_list(instance)
 
     print("Done.")
@@ -660,18 +686,21 @@ if __name__ == '__main__':
     shutil.copyfileobj(myfile, zipfile)
     myfile.close()
     zipfile.close()
-    instance_file.close()
+    if SAVE_REPLICA_HOLDINGS:
+        instance_file.close()
     with open(DIRECTORY + 'E3SM.json', 'w+') as d:
         json.dump(E3SM_f, d, indent=4)
 
     summ = summary()
-    send_data(summ, 'e.witham@columbia.edu')
-    send_data(summ, 'ames4@llnl.gov')
-
+    if PRIMARY_EMAIL is not None:
+        for e in PRIMARY_EMAIL:
+            send_data(summ, e)
+    # send_data(summ, 'e.witham@columbia.edu')
+    # send_data(summ, 'ames4@llnl.gov')
 
     if len(warnings) > 2:
         pass
-    elif EMAIL:
+    elif EMAIL_LIST:
         send_data(summ, 'ruth.petrie@stfc.ac.uk')
         send_data(summ, 'esgf@dkrz.de')
         send_data(summ, 'kelsey.druken@anu.edu.au')

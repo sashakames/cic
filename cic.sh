@@ -14,4 +14,4 @@ mkdir -p $destpath
 
 
 
-python3 cic.py $destpath $cmorpath
+python3 cic.py --output-dir $destpath --cmor-tables $cmorpath --email e.witham@columbia.edu ames4@llnl.gov --enable-email --fix-errors
