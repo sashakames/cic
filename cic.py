@@ -561,7 +561,10 @@ def fix_retracted_missing(ids):
 def fix_latest_false(ids):
     pc = publisherClient(CERT, INDEX_NODE)
     for i in ids:
-        xml = up.gen_hide_xml(i)
+        xml = up.gen_hide_xml(i, "datasets")
+        print(xml)
+        pc.update(xml)
+        xml = up.gen_hide_xml(i, "files")
         print(xml)
         pc.update(xml)
 
