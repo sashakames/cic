@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cd /export/witham3/cic
+srcdir=`dirname $0`
+cd $srcdir
 
 bash /export/witham3/esgf/conda.sh
 . ~/.bashrc
@@ -14,4 +15,4 @@ mkdir -p $destpath
 
 
 
-python3 cic.py --output-dir $destpath --cmor-tables $cmorpath --email e.witham@columbia.edu ames4@llnl.gov --enable-email --fix-errors
+nohup python3 cic.py --output-dir $destpath --cmor-tables $cmorpath --email e.witham@columbia.edu ames4@llnl.gov --enable-email --fix-errors > $destpath/cic.$thedate.log
