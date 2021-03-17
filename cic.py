@@ -11,6 +11,7 @@ import gzip
 import shutil
 import urllib3
 import argparse
+import xmltodict
 
 
 def get_args():
@@ -605,8 +606,10 @@ if __name__ == '__main__':
     # look at IPSL for latest false originals
     search_url = "http://esgf-node.llnl.gov/esg-search/search?project=CMIP6&latest=true&retracted=false&limit={}&offset={}&format=application%2fsolr%2bjson&replica=true&institution_id={}&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,retracted,id,activity_drs,activity_id,source_id,experiment_id"
 
-    uk_url = "https://esgf-node.llnl.gov/esg-search/search/?limit={}&offset={}&replica=false&latest=true&data_node=esgf-data3.ceda.ac.uk&project=CMIP6&format=application%2fsolr%2bjson&institution_id={}&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
-    node_list = get_nodes()
+    # uk_url = "https://esgf-node.llnl.gov/esg-search/search/?limit={}&offset={}&replica=false&latest=true&data_node=esgf-data3.ceda.ac.uk&project=CMIP6&format=application%2fsolr%2bjson&institution_id={}&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+    # node_list = get_nodes()
+    node_list = ["esgf-index4.ceda.ac.uk", ]
+    uk_args = "project=CMIP6&limit={}&offset={}&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
 
     for node in node_list:
         print(node)
