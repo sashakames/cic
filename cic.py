@@ -11,7 +11,6 @@ import gzip
 import shutil
 import urllib3
 import argparse
-import xmltodict
 
 
 def get_args():
