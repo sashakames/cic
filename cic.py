@@ -621,7 +621,10 @@ if __name__ == '__main__':
                 continue
             else:
                 base = "http://{}/esg-search/search?".format(node)
-                args = "project=CMIP6&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+                if "ceda" in node:
+                    args = uk_args
+                else:
+                    args = "project=CMIP6&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
                 url = base + args
             print("Fetching originals...")
             originals, tally = get_batch(url, institution)
