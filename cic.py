@@ -656,6 +656,7 @@ if __name__ == '__main__':
             continue
         if institution not in originals_by_institution.keys():
             print("No original records found for: " + institution)
+            warnings.append("No original records found for: " + institution)
             continue
         print("Fetching replicas...")
         replicas, tally = get_batch(search_url, institution)
