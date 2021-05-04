@@ -729,7 +729,7 @@ if __name__ == '__main__':
     if len(warnings) > 2:
         pass
     elif EMAIL_LIST:
-        send_data(summ, 'ruth.petrie@stfc.ac.uk')
+        send_data(summ, 'alan.iwi@stfc.ac.uk')
         send_data(summ, 'esgf@dkrz.de')
         send_data(summ, 'kelsey.druken@anu.edu.au')
 
