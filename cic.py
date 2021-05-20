@@ -170,6 +170,8 @@ def get_nodes():
         if not unreachable:
             lst.append(x)
 
+    if skipped > 0:
+        FIX_ERRS = False
     if skipped > 2:
         print("ERROR: more than 2 data nodes unreachable. Exiting.")
         exit(1)
