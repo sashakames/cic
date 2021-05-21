@@ -152,6 +152,7 @@ def get_nodes():
 
     lst = []
     bad_lst = []
+    global FIX_ERRS
 
     for x in a:
         print(x)
