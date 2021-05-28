@@ -538,7 +538,8 @@ def gen_ids(d):
     nodes = ["aims3.llnl.gov", "esgf-data1.llnl.gov"]
     print(d.keys())
     for err in d.keys():
-        if err == ORIGINAL_ERR or err == RETRACT_ERR:
+        # if err == ORIGINAL_ERR or err == RETRACT_ERR: # temporarily removed this due to false positives being retracted when nodes are down
+        if err == RETRACT_ERR:
             l = rm
         elif err == LATEST_ERR:
             l = lf

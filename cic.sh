@@ -15,4 +15,4 @@ mkdir -p $destpath
 
 
 
-nohup python3 cic.py --output-dir $destpath --cmor-tables $cmorpath --email e.witham@columbia.edu ames4@llnl.gov --enable-email > $destpath/cic.$thedate.log
+nohup python3 cic.py --output-dir $destpath --cmor-tables $cmorpath --email e.witham@columbia.edu ames4@llnl.gov --fix-errors --enable-email > $destpath/cic.$thedate.log
