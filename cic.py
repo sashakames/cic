@@ -33,6 +33,10 @@ def get_args():
                         help="Enable checking of the Errata database, expect longer time for output processing.")
     parser.add_argument("--get-replica-holdings", dest="get_holdings", default=False, action="store_true",
                         help="Enable output of replica holdings for comparison with SQLite database paths.")
+    parser.add_argument("--cert", dest="cert", default="/p/user_pub/publish-queue/certs/certificate-file",
+                        help="Override default certificate, please use absolute path.")
+    parser.add_argument("--debug", dest="debug", default=False, action="store_true",
+                        help="Enable debug testing mode, caps retrievable records (output is not complete, but sufficient for thorough testing).")
 
     return parser.parse_args()
 
@@ -60,7 +64,8 @@ EC_ERR = "Failed experiment_id check:"
 ERRATA = "Errata found:"
 duplicates = []
 INDEX_NODE = "esgf-node.llnl.gov"
-CERT = "/p/user_pub/publish-queue/certs/certificate-file"
+CERT = args.cert
+DEBUG = args.debug
 CMOR_PATH = args.cmor_tables
 DIRECTORY = args.output_directory
 if SAVE_REPLICA_HOLDINGS:
@@ -107,8 +112,10 @@ def compare(r, original, attr):  # use to compare attributes, r is response and 
         return False
 
 
-def get_list(node="default"):
-    if node == "default":
+def get_list(node="default", shard=False):
+    if shard:
+        url = "http://esgf-node.llnl.gov/esg-search/search?shards={}/solr&project=CMIP6&limit=0&facets=institution_id&replica=false&latest=true&format=application%2f%2bjson".format(node)
+    elif node == "default":
         url = "https://esgf-node.llnl.gov/esg-search/search?facets=institution_id&project=CMIP6&format=application%2fsolr%2bjson"
     elif node == "esgf-node.ipsl.upmc.fr":
         url = "https://esgf-node.ipsl.upmc.fr/esg-search/search?project=CMIP6&limit=0&facets=institution_id&distrib=false&replica=false&latest=true&format=application%2fsolr%2bjson"
@@ -178,7 +185,28 @@ def get_nodes():
         exit(1)
     else:
         warnings.append("WARNING: following data nodes unreachable: " + str(bad_lst) + ". This may impact results.")
-        return lst
+        return lst, bad_lst
+
+
+def shard_test(bad_lst):
+    retries = requests.packages.urllib3.util.retry.Retry(total=3, backoff_factor=2,
+                                                         status_forcelist=[429, 500, 502, 503, 504])
+    adapter = requests.adapters.HTTPAdapter(max_retries=retries)
+    http = requests.Session()
+    http.mount("http://", adapter)
+    nr_shards = []
+    temp = "http://esgf-node.llnl.gov/esg-search/search?shards={}/solr&limit=100&format=application%2fsolr%2bjson"
+    for n in bad_lst:
+        url = temp.format(n)
+        try:
+            r = json.loads(http.get(url, timeout=120).text)
+            if r["response"]["numFound"] <= 0:
+                nr_shards.append(n)
+        except:
+            nr_shards.append(n)
+            print("Shard for " + n + " unreachable.")
+
+    return nr_shards
 
 
 def get_batch(search_url, institution):
@@ -258,14 +286,15 @@ def get_batch(search_url, institution):
                     batch[n["instance_id"]].append(n)
             seen += 1
         count += 1
-        """if count >= 1:  # use to decide how many records to retrieve (testing tool)
-            if going:
-                going = False
-                print("Loaded 10k (temp max) results from " + institution)"""
+        if DEBUG:
+            if count >= 1:  # use to decide how many records to retrieve (testing tool)
+                if going:
+                    going = False
+                    print("Loaded 10k (temp max) results from " + institution)
     print("Done.")
     if found == 0:
         print("Error with load, " + str(found) + " found.")
-    elif seen < found:
+    elif seen < found and not DEBUG:
         print("Error. Only " + str(seen) + " results loaded out of " + str(found) + ".")
         warning = "ERROR collecting results from " + institution + ": Only " + str(
             seen) + " results loaded out of " + str(found) + "."
@@ -538,7 +567,8 @@ def gen_ids(d):
     nodes = ["aims3.llnl.gov", "esgf-data1.llnl.gov"]
     print(d.keys())
     for err in d.keys():
-        # if err == ORIGINAL_ERR or err == RETRACT_ERR: # temporarily removed this due to false positives being retracted when nodes are down
+        # if err == ORIGINAL_ERR or err == RETRACT_ERR:
+        # temporarily removed this ^ due to false positives being retracted when nodes are down
         if err == RETRACT_ERR:
             l = rm
         elif err == LATEST_ERR:
@@ -608,13 +638,22 @@ if __name__ == '__main__':
     # retracted=false
     # look at IPSL for latest false originals
     search_url = "http://esgf-node.llnl.gov/esg-search/search?project=CMIP6&latest=true&retracted=false&limit={}&offset={}&format=application%2fsolr%2bjson&replica=true&institution_id={}&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+    shard_url = "http://esgf-node.llnl.gov/esg-search/search?shards={}/solr&"
+    shard_args = "project=CMIP6&latest=true&retracted=false&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=False&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,retracted,id,activity_drs,activity_id,source_id,experiment_id"
     
-    node_list = get_nodes()
+    node_list, nr_node_list = get_nodes()
+    all_nodes = node_list + nr_node_list
+    bad_shards = shard_test(nr_node_list)
     
-    uk_args = "project=CMIP6&limit={}&offset={}&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+    uk_args = "limit={}&offset={}&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
 
-    for node in node_list:
+    for node in all_nodes:
         print(node)
+        bad_node = node in nr_node_list
+        if bad_node and node in bad_shards:
+            continue
+        if bad_node:
+            institution_list = get_list(node, shard=True)
         try:
             institution_list = get_list(node)
         except Exception as ex:
@@ -625,7 +664,10 @@ if __name__ == '__main__':
                 continue
             else:
                 base = "http://{}/esg-search/search?".format(node)
-                if "ceda" in node:
+                if bad_node:
+                    base = shard_url.format(node)
+                    args = shard_args
+                elif "ceda" in node:
                     args = uk_args
                 else:
                     args = "project=CMIP6&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
