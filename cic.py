@@ -114,7 +114,7 @@ def compare(r, original, attr):  # use to compare attributes, r is response and 
 
 def get_list(node="default", shard=False):
     if shard:
-        url = "http://esgf-node.llnl.gov/esg-search/search?shards={}/solr&project=CMIP6&limit=0&facets=institution_id&replica=false&latest=true&format=application%2f%2bjson".format(node)
+        url = "http://esgf-node.llnl.gov/esg-search/search?shards={}/solr&project=CMIP6&limit=0&facets=institution_id&replica=false&format=application%2fsolr%2bjson&latest=true".format(node)
     elif node == "default":
         url = "https://esgf-node.llnl.gov/esg-search/search?facets=institution_id&project=CMIP6&format=application%2fsolr%2bjson"
     elif node == "esgf-node.ipsl.upmc.fr":
@@ -134,7 +134,8 @@ def get_list(node="default", shard=False):
     else:
         print("ERROR: Invalid node.")
         exit(1)
-
+    if DEBUG:
+        print(url)
     resp = json.loads(requests.get(url).text)
     lst = []
     i = 0
@@ -209,7 +210,7 @@ def shard_test(bad_lst):
     return nr_shards
 
 
-def get_batch(search_url, institution):
+def get_batch(search_url, institution, node=None):
     if TEST:
         return {}, 0
     going = True
@@ -230,7 +231,8 @@ def get_batch(search_url, institution):
 
         found = 0
         try:  # put in a timeout for buffering instances
-            print(".", end="", flush=True)
+            if DEBUG:
+                print(search_url.format(NUM_RETR, offset, institution), end="\n", flush=True)
             resp = json.loads(http.get(search_url.format(NUM_RETR, offset, institution), timeout=60).text)
         except Exception as x:
             print("Error with load. Loaded " + str(count * NUM_RETR) + " results from " + institution)
@@ -294,6 +296,9 @@ def get_batch(search_url, institution):
     print("Done.")
     if found == 0:
         print("Error with load, " + str(found) + " found.")
+        if node:
+            nr_node_list.append(node)
+            all_nodes.append(node)
     elif seen < found and not DEBUG:
         print("Error. Only " + str(seen) + " results loaded out of " + str(found) + ".")
         warning = "ERROR collecting results from " + institution + ": Only " + str(
@@ -565,7 +570,6 @@ def gen_ids(d):
     rm = []
     lf = []
     nodes = ["aims3.llnl.gov", "esgf-data1.llnl.gov"]
-    print(d.keys())
     for err in d.keys():
         # if err == ORIGINAL_ERR or err == RETRACT_ERR:
         # temporarily removed this ^ due to false positives being retracted when nodes are down
@@ -644,8 +648,8 @@ if __name__ == '__main__':
     node_list, nr_node_list = get_nodes()
     all_nodes = node_list + nr_node_list
     bad_shards = shard_test(nr_node_list)
-    
-    uk_args = "limit={}&offset={}&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+
+    uk_args = "limit={}&offset={}&institution_id={}&replica=false&format=application%2fsolr%2bjson&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
 
     for node in all_nodes:
         print(node)
@@ -667,13 +671,13 @@ if __name__ == '__main__':
                 if bad_node:
                     base = shard_url.format(node)
                     args = shard_args
-                elif "ceda" in node:
+                if "ceda" in node:
                     args = uk_args
                 else:
                     args = "project=CMIP6&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
                 url = base + args
             print("Fetching originals...")
-            originals, tally = get_batch(url, institution)
+            originals, tally = get_batch(url, institution, node)
             if tally == 0:
                 continue
             else:
