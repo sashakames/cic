@@ -11,6 +11,7 @@ import gzip
 import shutil
 import urllib3
 import argparse
+from datetime import datetime
 
 
 def get_args():
@@ -63,6 +64,7 @@ AC_ERR = "Failed activity check:"
 EC_ERR = "Failed experiment_id check:"
 ERRATA = "Errata found:"
 duplicates = []
+metrics = {}
 INDEX_NODE = "esgf-node.llnl.gov"
 CERT = args.cert
 DEBUG = args.debug
@@ -304,6 +306,14 @@ def get_batch(search_url, institution, node=None):
         warning = "ERROR collecting results from " + institution + ": Only " + str(
             seen) + " results loaded out of " + str(found) + "."
         warnings.append(warning)
+    if institution not in metrics:
+        metrics[institution] = {}
+        metrics[institution]["numfound"] = found
+        metrics[institution]["actual"] = seen
+    else:
+        metrics[institution]["numfound"] += found
+        metrics[institution]["actual"] += seen
+
     return batch, found
 
 
@@ -311,6 +321,11 @@ def flag(field, err, group):
     if field not in inconsistencies[err].keys():
         inconsistencies[err][field] = []
     inconsistencies[err][field].append(group)
+
+
+def log_metrics(fn):
+    with open(fn, "w") as mf:
+        json.dump(metrics, mf, indent=4)
 
 
 def count_error(err, field):
@@ -766,6 +781,10 @@ if __name__ == '__main__':
     zipfile.close()
     if SAVE_REPLICA_HOLDINGS:
         instance_file.close()
+
+    now = datetime.now()
+    metric_fn = "metrics." + str(now.strftime("%Y%m%d")) + ".json"
+    log_metrics(metric_fn)
     # with open(DIRECTORY + 'E3SM.json', 'w+') as d:
     #    json.dump(E3SM_f, d, indent=4)
 
