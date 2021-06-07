@@ -1,0 +1,158 @@
+{
+    "CNRM-CERFACS": {
+        "numfound": 577823,
+        "actual": 577823
+    },
+    "IPSL": {
+        "numfound": 2034285,
+        "actual": 2034285
+    },
+    "BCC": {
+        "numfound": 132872,
+        "actual": 132872
+    },
+    "CAS": {
+        "numfound": 150369,
+        "actual": 150369
+    },
+    "CCCma": {
+        "numfound": 1535312,
+        "actual": 1535312
+    },
+    "E3SM-Project": {
+        "numfound": 7318,
+        "actual": 7318
+    },
+    "KIOST": {
+        "numfound": 5274,
+        "actual": 5274
+    },
+    "LLNL": {
+        "numfound": 324,
+        "actual": 324
+    },
+    "MIROC": {
+        "numfound": 673819,
+        "actual": 673819
+    },
+    "MRI": {
+        "numfound": 299006,
+        "actual": 299006
+    },
+    "NASA-GISS": {
+        "numfound": 226951,
+        "actual": 226951
+    },
+    "NCAR": {
+        "numfound": 1276095,
+        "actual": 1276095
+    },
+    "NIMS-KMA": {
+        "numfound": 18740,
+        "actual": 18740
+    },
+    "NOAA-GFDL": {
+        "numfound": 60738,
+        "actual": 60738
+    },
+    "NUIST": {
+        "numfound": 7927,
+        "actual": 7927
+    },
+    "RUBISCO": {
+        "numfound": 169,
+        "actual": 169
+    },
+    "SNU": {
+        "numfound": 3022,
+        "actual": 3022
+    },
+    "THU": {
+        "numfound": 4105,
+        "actual": 4105
+    },
+    "UA": {
+        "numfound": 1408,
+        "actual": 1408
+    },
+    "CSIRO": {
+        "numfound": 173555,
+        "actual": 173555
+    },
+    "CSIRO-ARCCSS": {
+        "numfound": 27245,
+        "actual": 27245
+    },
+    "AER": {
+        "numfound": 24,
+        "actual": 24
+    },
+    "AS-RCEC": {
+        "numfound": 63637,
+        "actual": 63637
+    },
+    "AWI": {
+        "numfound": 143431,
+        "actual": 143431
+    },
+    "CAMS": {
+        "numfound": 6628,
+        "actual": 6628
+    },
+    "CCCR-IITM": {
+        "numfound": 3632,
+        "actual": 3632
+    },
+    "CMCC": {
+        "numfound": 34611,
+        "actual": 34611
+    },
+    "DKRZ": {
+        "numfound": 17467,
+        "actual": 17467
+    },
+    "DWD": {
+        "numfound": 2570,
+        "actual": 2570
+    },
+    "EC-Earth-Consortium": {
+        "numfound": 598872,
+        "actual": 598872
+    },
+    "FIO-QLNM": {
+        "numfound": 7484,
+        "actual": 7484
+    },
+    "HAMMOZ-Consortium": {
+        "numfound": 39150,
+        "actual": 39150
+    },
+    "INM": {
+        "numfound": 19133,
+        "actual": 19133
+    },
+    "MOHC": {
+        "numfound": 545192,
+        "actual": 525192
+    },
+    "MPI-M": {
+        "numfound": 273100,
+        "actual": 273100
+    },
+    "NTU": {
+        "numfound": 122,
+        "actual": 122
+    },
+    "RTE-RRTMGP-Consortium": {
+        "numfound": 8,
+        "actual": 8
+    },
+    "UHH": {
+        "numfound": 16,
+        "actual": 16
+    },
+    "NCC": {
+        "numfound": 1173971,
+        "actual": 1173971
+    }
+}
