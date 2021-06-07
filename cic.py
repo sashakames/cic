@@ -783,7 +783,7 @@ if __name__ == '__main__':
         instance_file.close()
 
     now = datetime.now()
-    metric_fn = "metrics." + str(now.strftime("%Y%m%d")) + ".json"
+    metric_fn = DIRECTORY + "metrics." + str(now.strftime("%Y%m%d")) + ".json"
     log_metrics(metric_fn)
     # with open(DIRECTORY + 'E3SM.json', 'w+') as d:
     #    json.dump(E3SM_f, d, indent=4)
