@@ -238,10 +238,14 @@ def get_batch(search_url, institution, node=None):
             resp = json.loads(http.get(search_url.format(NUM_RETR, offset, institution), timeout=60).text)
         except Exception as x:
             print("Error with load. Loaded " + str(count * NUM_RETR) + " results from " + institution)
-            warning = "WARNING: Error with loading results from " + institution + ": " + str(
-                seen) + " results loaded. May impact error checking."
-            warnings.append(warning)
-            skips.append(institution)
+            if node and node not in nr_node_list:
+                nr_node_list.append(node)
+                all_nodes.append(node)
+            elif not node or 'shard' in search_url:
+                warning = "WARNING: Error with loading results from " + institution + ": " + str(
+                    seen) + " results loaded. May impact error checking."
+                warnings.append(warning)
+                skips.append(institution)
             break
 
         numfound = resp["response"]["numFound"]
@@ -249,8 +253,12 @@ def get_batch(search_url, institution, node=None):
         # check if numfound = len response docs, does numfound remain consistent
         if numfound == 0:
             print("ERROR: No results loaded from " + institution + ". Possible network error: " + search_url)
-            warning = "ERROR: No results loaded from " + institution + ". Possible network error: " + search_url
-            warnings.append(warning)
+            if node and node not in nr_node_list:
+                nr_node_list.append(node)
+                all_nodes.append(node)
+            elif not node or 'shard' in search_url:
+                warning = "ERROR: No results loaded from " + institution + ". Possible network error: " + search_url
+                warnings.append(warning)
             return {}, -1
 
         if togo == 0:
@@ -295,12 +303,10 @@ def get_batch(search_url, institution, node=None):
                 if going:
                     going = False
                     print("Loaded 10k (temp max) results from " + institution)
-    print("Done.")
-    if found == 0:
-        print("Error with load, " + str(found) + " found.")
-        if node:
-            nr_node_list.append(node)
-            all_nodes.append(node)
+    if seen == 0:
+        if node and node not in nr_node_list:
+                nr_node_list.append(node)
+                all_nodes.append(node)
     elif seen < found and not DEBUG:
         print("Error. Only " + str(seen) + " results loaded out of " + str(found) + ".")
         warning = "ERROR collecting results from " + institution + ": Only " + str(
@@ -313,6 +319,7 @@ def get_batch(search_url, institution, node=None):
     else:
         metrics[institution]["numfound"] += found
         metrics[institution]["actual"] += seen
+    print("Done.")
 
     return batch, found
 
@@ -783,7 +790,7 @@ if __name__ == '__main__':
         instance_file.close()
 
     now = datetime.now()
-    metric_fn = "metrics." + str(now.strftime("%Y%m%d")) + ".json"
+    metric_fn = DIRECTORY + "metrics." + str(now.strftime("%Y%m%d")) + ".json"
     log_metrics(metric_fn)
     # with open(DIRECTORY + 'E3SM.json', 'w+') as d:
     #    json.dump(E3SM_f, d, indent=4)
