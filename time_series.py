@@ -1,11 +1,12 @@
-import matplotlib
+from datetime import datetime
 import json
 import numpy as np
 from matplotlib.figure import Figure
 import os
 import matplotlib.patches as mpatches
+from pathlib import Path
 
-METRICS_DIR = "./metrics"
+METRICS_DIR = "./metrics/"
 
 def process_metrics(metrics_file):
     metrics = json.load(open(metrics_file, "r"))
@@ -17,26 +18,60 @@ def process_metrics(metrics_file):
         complete_metrics[institution]["numfound"].append(metrics[institution]["numfound"])
 
 
+def get_long_color(c):
+    if 'b' in c:
+        return "blue"
+    elif 'g' in c:
+        return "green"
+    elif 'r' in c:
+        return "red"
+    elif 'c' in c:
+        return "cyan"
+    elif 'm' in c:
+        return "magenta"
+    elif 'y' in c:
+        return "yellow"
+    else:
+        return None
+
+
 def graph(length):
+    now = datetime.now()
+    dt = str(now.strftime("%Y%m%d"))
+    time = [i for i in range(1, length + 1)]
+    colors = ['b-', 'g-', 'r-', 'c-', 'm-', 'y-']
+    c = 0
+    handles = []
+    n = 0
     fig = Figure()
     ax = fig.add_subplot(1, 1, 1)
-    time = [i for i in range(0, length)]
-    colors = []
-    c = 0
     for institution in complete_metrics:
         a = np.array(complete_metrics[institution]["actual"])
         nf = np.array(complete_metrics[institution]["numfound"])
-        ax.plot(time, a, colors[c])
-        c += 1
-        ax.plot(time, nf, colors[c])
-        c += 1
-        if c >= (len(colors) - 1):
+        try:
+            ax.plot(time, a, colors[c])
+            alc = get_long_color(colors[c])
+            c += 1
+            ax.plot(time, nf, colors[c])
+            nlc = get_long_color(colors[c])
+            c += 1
+        except:
+            continue
+        actual = mpatches.Patch(color=alc, label=institution+'-actual')
+        numf = mpatches.Patch(color=nlc, label=institution+'-numfound')
+        handles.append(actual)
+        handles.append(numf)
+        ax.set_xlabel('Run Number')
+        ax.set_title("CIC Metrics")
+        if len(handles) == 6 or institution == list(complete_metrics.keys())[-1]:
+            n += 1
+            ax.legend(handles=handles)
+            Path('graphs/graph-' + dt + '.png').touch()
+            fig.savefig('graphs/graph-' + dt + '-' + str(n) + '.png')
+            handles = []
             c = 0
-        lc = "blue"
-        blue = mpatches.Patch(color=lc, label=institution+'-actual')
-        # figure out logic for colors, set up second patch
-        # set up legend
-    fig.show()
+            fig = Figure()
+            ax = fig.add_subplot(1, 1, 1)
 
 
 if __name__ == "__main__":
@@ -46,6 +81,6 @@ if __name__ == "__main__":
     metrics_files = os.listdir(METRICS_DIR)
 
     for mf in metrics_files:
-        process_metrics(mf)
+        process_metrics(METRICS_DIR + mf)
 
     graph(len(metrics_files))
