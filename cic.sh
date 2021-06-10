@@ -15,4 +15,9 @@ mkdir -p $destpath
 
 
 
-nohup python3 cic.py --output-dir $destpath --cmor-tables $cmorpath --email e.witham@columbia.edu ames4@llnl.gov --fix-errors --enable-email > $destpath/cic.$thedate.log
+# nohup python3 cic.py --output-dir $destpath --cmor-tables $cmorpath --email e.witham@columbia.edu ames4@llnl.gov --fix-errors --enable-email > $destpath/cic.$thedate.log
+nohup python3 cic.py --output-dir $destpath --cmor-tables $cmorpath --email e.witham@columbia.edu ames4@llnl.gov --fix-errors > $destpath/cic.$thedate.log
+cp $destpath/metrics.* ./metrics/
+python3 time_series.py
+mkdir $destpath/graphs
+cp ./graphs/* $destpath/graphs/
