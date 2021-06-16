@@ -239,6 +239,7 @@ def get_batch(search_url, institution, node=None):
         except Exception as x:
             print("Error with load. Loaded " + str(count * NUM_RETR) + " results from " + institution)
             if node and node not in nr_node_list:
+                warnings.append("INFO: using data shard for " + node + ". This may impact results.")
                 nr_node_list.append(node)
                 all_nodes.append(node)
             elif not node or 'shard' in search_url:
@@ -254,6 +255,7 @@ def get_batch(search_url, institution, node=None):
         if numfound == 0:
             print("ERROR: No results loaded from " + institution + ". Possible network error: " + search_url)
             if node and node not in nr_node_list:
+                warnings.append("INFO: using data shard for " + node + ". This may impact results.")
                 nr_node_list.append(node)
                 all_nodes.append(node)
             elif not node or 'shard' in search_url:
@@ -305,8 +307,9 @@ def get_batch(search_url, institution, node=None):
                     print("Loaded 10k (temp max) results from " + institution)
     if seen == 0:
         if node and node not in nr_node_list:
-                nr_node_list.append(node)
-                all_nodes.append(node)
+            warnings.append("INFO: using data shard for " + node + ". This may impact results.")
+            nr_node_list.append(node)
+            all_nodes.append(node)
     elif seen < found and not DEBUG:
         print("Error. Only " + str(seen) + " results loaded out of " + str(found) + ".")
         warning = "ERROR collecting results from " + institution + ": Only " + str(
