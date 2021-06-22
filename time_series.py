@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     complete_metrics = {}
 
-    metrics_files = os.listdir(METRICS_DIR)
+    metrics_files = sorted(Path(METRICS_DIR).iterdir(), key=os.path.getmtime, reverse=True)[:2]
 
     for mf in metrics_files:
         process_metrics(METRICS_DIR + mf)
