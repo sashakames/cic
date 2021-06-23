@@ -2,11 +2,12 @@ from datetime import datetime
 import json
 import numpy as np
 from matplotlib.figure import Figure
-import os
+import os, sys
 import matplotlib.patches as mpatches
 from pathlib import Path
 
 METRICS_DIR = "./metrics/"
+GRAPHS_DIR = sys.argv[1]
 
 def process_metrics(metrics_file):
     metrics = json.load(open(metrics_file, "r"))
@@ -66,8 +67,8 @@ def graph(length):
         if len(handles) == 6 or institution == list(complete_metrics.keys())[-1]:
             n += 1
             ax.legend(handles=handles)
-            Path('graphs/graph-' + dt + '.png').touch()
-            fig.savefig('graphs/graph-' + dt + '-' + str(n) + '.png')
+            Path(GRAPHS_DIR + '/graph-' + dt + '.png').touch()
+            fig.savefig(GRAPHS_DIR + '/graph-' + dt + '-' + str(n) + '.png')
             handles = []
             c = 0
             fig = Figure()
@@ -78,9 +79,9 @@ if __name__ == "__main__":
 
     complete_metrics = {}
 
-    metrics_files = sorted(Path(METRICS_DIR).iterdir(), key=os.path.getmtime, reverse=True)[:2]
+    metrics_files = sorted(Path(METRICS_DIR).iterdir(), key=os.path.getmtime, reverse=True)[:30]
 
     for mf in metrics_files:
-        process_metrics(METRICS_DIR + mf)
+        process_metrics(str(mf))
 
     graph(len(metrics_files))
