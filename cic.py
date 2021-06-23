@@ -169,6 +169,9 @@ def get_nodes():
         if not "llnl" in x:
             if "ceda" in x:
                 url = "http://{}/esg-search/search?limit=0&facets=index_node&format=application%2fsolr%2bjson"
+            elif "gfdl" in x:
+                warnings.append("INFO: using data shard for " + x + ". This may impact results.")
+                continue
             else:
                 url = "http://{}/esg-search/search?project=CMIP6&limit=0&facets=index_node&format=application%2fsolr%2bjson"
             try:
@@ -178,6 +181,7 @@ def get_nodes():
                 skipped += 1
                 print("Data node unreachable.")
                 bad_lst.append(x)
+                warnings.append("INFO: using data shard for " + x + ". This may impact results.")
         if not unreachable:
             lst.append(x)
 
@@ -187,7 +191,9 @@ def get_nodes():
         print("ERROR: more than 2 data nodes unreachable. Exiting.")
         exit(1)
     else:
-        warnings.append("WARNING: following data nodes unreachable: " + str(bad_lst) + ". This may impact results.")
+        if len(bad_lst) > 0:
+            warnings.append("WARNING: following data nodes unreachable: " + str(bad_lst) + ". This may impact results.")
+        bad_lst.append("esgdata.gfdl.noaa.gov")
         return lst, bad_lst
 
 
