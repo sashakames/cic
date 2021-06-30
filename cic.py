@@ -316,6 +316,7 @@ def get_batch(search_url, institution, node=None):
             warnings.append("INFO: using data shard for " + node + ". This may impact results.")
             nr_node_list.append(node)
             all_nodes.append(node)
+            return {}, -1
     elif seen < found and not DEBUG:
         print("Error. Only " + str(seen) + " results loaded out of " + str(found) + ".")
         warning = "ERROR collecting results from " + institution + ": Only " + str(
