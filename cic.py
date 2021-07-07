@@ -416,9 +416,12 @@ def find_inconsistencies(batch, institution):
                                     E3SM_f.append(group)
                                 else:
                                     multiples = True
-                        if duplicate:
+                        if duplicate and member['index_node'] not in nr_node_list:
                             flag(member['data_node'], DUP_ERR, group)
                             count_error(DUP_ERR, institution)
+                        elif duplicate:
+                            group.remove(member)
+
             else:
                 if member['retracted']:
                     replica_retracted = True
@@ -673,15 +676,15 @@ if __name__ == '__main__':
 
     # retracted=false
     # look at IPSL for latest false originals
-    search_url = "http://esgf-node.llnl.gov/esg-search/search?project=CMIP6&latest=true&retracted=false&limit={}&offset={}&format=application%2fsolr%2bjson&replica=true&institution_id={}&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+    search_url = "http://esgf-node.llnl.gov/esg-search/search?project=CMIP6&latest=true&retracted=false&limit={}&offset={}&format=application%2fsolr%2bjson&replica=true&institution_id={}&fields=instance_id,number_of_files,_timestamp,index_node,data_node,replica,institution_id,latest,retracted,id,activity_drs,activity_id,source_id,experiment_id"
     shard_url = "http://esgf-node.llnl.gov/esg-search/search?shards={}/solr&"
-    shard_args = "project=CMIP6&latest=true&retracted=false&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=False&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+    shard_args = "project=CMIP6&latest=true&retracted=false&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=False&fields=instance_id,number_of_files,_timestamp,index_node,data_node,replica,institution_id,latest,retracted,id,activity_drs,activity_id,source_id,experiment_id"
     
     node_list, nr_node_list = get_nodes()
     all_nodes = node_list + nr_node_list
     bad_shards = shard_test(nr_node_list)
 
-    uk_args = "limit={}&offset={}&institution_id={}&replica=false&format=application%2fsolr%2bjson&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+    uk_args = "limit={}&offset={}&institution_id={}&replica=false&format=application%2fsolr%2bjson&fields=instance_id,number_of_files,_timestamp,index_node,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
 
     for node in all_nodes:
         print(node)
@@ -706,7 +709,7 @@ if __name__ == '__main__':
                 if "ceda" in node:
                     args = uk_args
                 else:
-                    args = "project=CMIP6&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
+                    args = "project=CMIP6&limit={}&offset={}&format=application%2fsolr%2bjson&institution_id={}&replica=false&fields=instance_id,number_of_files,_timestamp,index_node,data_node,replica,institution_id,latest,version,retracted,id,activity_drs,activity_id,source_id,experiment_id"
                 url = base + args
             print("Fetching originals...")
             originals, tally = get_batch(url, institution, node)
