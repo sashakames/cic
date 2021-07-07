@@ -407,15 +407,15 @@ def find_inconsistencies(batch, institution):
                         print("MULTIPLE ORIGINALS: " + instance)
                         multiples = True
                     else:
-                        nope = False
+                        duplicate = True
                         for key in member.keys():
                             if member[key] != original[key]:
-                                nope = True
+                                duplicate = False
                                 if institution == 'E3SM-Project':
                                     E3SM_f.append(group)
                                 else:
                                     multiples = True
-                        if not nope:
+                        if duplicate:
                             flag(member['data_node'], DUP_ERR, group)
                             count_error(DUP_ERR, institution)
             else:
