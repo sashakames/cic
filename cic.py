@@ -512,7 +512,7 @@ def summary():
     else:
         lines.append("Errata database comparison logging disabled.")
     if FIX_ERRS:
-        lines.append("Auto retraction/updating on LLNL ESGF node for errors where no original record was found, "
+        lines.append("Auto retraction/updating on LLNL ESGF node for errors where "
                      "original records were retracted, or original record was not latest version enabled.")
 
     lines.append("Duplicate records: ")
